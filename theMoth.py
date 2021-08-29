@@ -19,7 +19,7 @@ async def on_message(message):
 
     if message.content.startswith('?help'):
         await message.channel.send('Supported commands:\n?sooth - draws a random sooth card')
-    
+
     if message.content.startswith('?sooth'):
         # generate a random rumber between 1 and 60, with leading zeros if needed
         cardNum = str(random.randint(1,60)).zfill(2)
@@ -27,5 +27,39 @@ async def on_message(message):
         await message.channel.send("https://app.invisiblesunrpg.com/wpsite/wp-content/uploads/2018/04/"+cardNum+".png")
         # post the link to the details page for that card. The <> wrapping on the URL prevents Discord from embedding a link preview (looks cleaner that way)
         await message.channel.send("Details: <https://app.invisiblesunrpg.com/soothdeck/card-"+cardNum+"/>")
+
+    if message.content.startswith('?roll'):
+        # split into the dice groups we're rolling
+        args = message.content.split()[1:]
+        if not args:
+            return await message.channel.send(room, 'Missing dice argument')
+        try:
+            res = []
+            bonus = 0
+            for arg in args:
+                if arg[0] in ['+', '-']:
+                    # bonus modifier
+                    bonus += int(arg)
+                    continue
+                count, sides = arg.split('d')
+                sides = int(sides)
+                count = int(count or 1)
+                res += [1 + randrange(sides) for _ in range(count)]
+            if len(res) < 2 and not bonus:
+                # only rolled one die, just post its roll
+                return await message.channel.send(str(res[0]))
+            # rhs: total sum
+            rhs = sum(res) + bonus
+            # lhs: dice rolls joined by '+'
+            lhs = '+'.join(map(str, res))
+            # add bonus to lhs string
+            if bonus > 0:
+                lhs += f'+{bonus}'
+            elif bonus < 0:
+                lhs += f'{bonus}'
+            # post the final message, e.g.: "4+3+1 = 8"
+            return await message.channel.send(f'{lhs} = {rhs}')
+        except ValueError:
+            return await message.channel.send(f'Invalid dice or bonus spec: {arg}. Use the form [count]d[sides], +[bonus], or -[bonus]')
 
 client.run('YOUR BOT TOKEN HERE')
