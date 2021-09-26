@@ -32,8 +32,17 @@ async def on_message(message):
         # split into the dice groups we're rolling
         args = message.content.split()[1:]
         if not args:
-            return await message.channel.send('Missing dice argument')
+            # if it just told to roll, roll a standard mundane die
+            res = random.randrange(10)
+            return await message.channel.send(res)
         try:
+            if len(args) < 2:
+                # if only passed a number, roll the mundane die, then magic die
+                count = int(args[0]) - 1
+                res = "Mundane Die: " + str(random.randrange(10))
+                for _ in range(count):
+                    res += " Magic Die: " + str(random.randrange(10))
+                return await message.channel.send(res)
             res = []
             bonus = 0
             for arg in args:
@@ -60,6 +69,6 @@ async def on_message(message):
             # post the final message, e.g.: "4+3+1 = 8"
             return await message.channel.send(f'{lhs} = {rhs}')
         except ValueError:
-            return await message.channel.send(f'Invalid dice or bonus spec: {arg}. Use the form [count]d[sides], +[bonus], or -[bonus]')
+            return await message.channel.send(f'Invalid dice or bonus spec: {arg}. Use /"?roll/" to roll a single Invisible Sun die. (Mundane) To add magic die, just include the total number of dice. (Including Mundane) For other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
 
 client.run('YOUR BOT TOKEN HERE')
