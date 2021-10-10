@@ -36,12 +36,25 @@ async def on_message(message):
             res = random.randrange(10)
             return await message.channel.send(res)
         try:
-            if len(args) < 2:
-                # if only passed a number, roll the mundane die, then magic die
-                count = int(args[0]) - 1
-                res = "Mundane Die: " + str(random.randrange(10))
-                for _ in range(count):
-                    res += " Magic Die: " + str(random.randrange(10))
+            if args[0].startswith('+'):
+                if len(args) > 1: raise ValueError
+                # if adding magic dice, roll the mundane die, then number of magic die
+                count = int(args[0])
+                res = "Mundane: " + str(random.randrange(10)) + '\n' + "Magic: "
+                fluxcount = 0
+                for _ in range(count -1):
+                    roll = random.randrange(10)
+                    res += str(roll) + " | "
+                    if roll == 0: fluxcount += 1
+                roll = random.randrange(10)
+                res += str(roll)
+                if roll == 0: fluxcount += 1
+                if fluxcount > 0:
+                    res += '\n'
+                    if fluxcount == 1: res += "Minor "
+                    if fluxcount == 2: res += "Major "
+                    if fluxcount == 3: res += "Grand "
+                    res += "Flux!"
                 return await message.channel.send(res)
             res = []
             bonus = 0
@@ -68,7 +81,7 @@ async def on_message(message):
                 lhs += f'{bonus}'
             # post the final message, e.g.: "4+3+1 = 8"
             return await message.channel.send(f'{lhs} = {rhs}')
-        except ValueError:
-            return await message.channel.send(f'Invalid dice or bonus spec: {arg}. Use /"?roll/" to roll a single Invisible Sun die. (Mundane) To add magic die, just include the total number of dice. (Including Mundane) For other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
+        except:
+            return await message.channel.send(f'Invalid dice or bonus spec: {message.content}. Use "?roll" to roll a single Invisible Sun die. (Mundane) To add magic die, use +[# of magic die]. For other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
 
 client.run('YOUR BOT TOKEN HERE')
