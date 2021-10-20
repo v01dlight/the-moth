@@ -7,9 +7,9 @@
 
 -can draw sooth cards
 
--can roll dice (thanks @xPMo!)
+-can roll dice (thanks [xPMo](https://github.com/xPMo)!)
 
--can track flux for Invisible Sun dice (thanks @Baconaetor!)
+-can track flux for Invisible Sun dice (thanks [Baconaetor](https://github.com/Baconaetor)!)
 
 ### Usage:
 -Add The Moth bot to your Discord server with this link:
