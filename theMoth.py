@@ -54,6 +54,12 @@ async def on_message(message):
                     if fluxcount == 1: res += "Minor "
                     if fluxcount == 2: res += "Major "
                     if fluxcount == 3: res += "Grand "
+                    if fluxcount == 4: res += "Tetra-"
+                    if fluxcount == 5: res += "Penta-"
+                    if fluxcount == 6: res += "Hexa-"
+                    if fluxcount == 7: res += "Hepta-"
+                    if fluxcount == 8: res += "Octo-"
+                    if fluxcount == 9: res += "VISLA GAZES UPON YOU... how did you even do this? "
                     res += "Flux!"
                 return await message.channel.send(res)
             res = []
@@ -82,6 +88,6 @@ async def on_message(message):
             # post the final message, e.g.: "4+3+1 = 8"
             return await message.channel.send(f'{lhs} = {rhs}')
         except:
-            return await message.channel.send(f'Invalid dice or bonus spec: {message.content}. Use "?roll" to roll a single Invisible Sun die. (Mundane) To add magic die, use +[# of magic die]. For other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
+            return await message.channel.send(f'Invalid dice or bonus spec: {message.content}. Use "?roll" to roll a single Invisible Sun die (mundane). To add magic dice, use +[# of magic dice]. For other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
 
 client.run('YOUR BOT TOKEN HERE')
