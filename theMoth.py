@@ -18,7 +18,7 @@ async def on_message(message):
         await message.channel.send('Hello!')
 
     if message.content.startswith('?help'):
-        await message.channel.send('Supported commands:\n?sooth - draws a random sooth card\n?roll - rolls dice, eg ?roll 2d6 or ?roll d20 +5')
+        await message.channel.send('Supported commands:\n?sooth - draws a random sooth card\n?roll - rolls dice, e.g. ?roll 2d6 or ?roll d20 +5\nWith no arguments, ?roll will roll a mundane die from Invisible Sun, and with a +[number] argument it will roll a mundane die plus that many magic dice, e.g. ?roll +3')
 
     if message.content.startswith('?sooth'):
         # generate a random number between 1 and 60, with leading zeros if needed
