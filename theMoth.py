@@ -2,6 +2,7 @@
 
 import discord
 import random
+import os
 
 client = discord.Client()
 
@@ -90,4 +91,4 @@ async def on_message(message):
         except:
             return await message.channel.send(f'Invalid dice or bonus spec: {message.content}. Use "?roll" to roll a single Invisible Sun die (mundane). To add magic dice, use +[# of magic dice]. For other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
 
-client.run('YOUR BOT TOKEN HERE')
+client.run(os.environ.get('MOTH_BOT_TOKEN'))
