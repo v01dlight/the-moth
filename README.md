@@ -11,6 +11,7 @@
 
 -can track flux for Invisible Sun dice (thanks [Baconaetor](https://github.com/Baconaetor)!)
 
+-Docker support (thanks [lackita](https://github.com/lackita)!)
 ### Usage:
 -Add The Moth bot to your Discord server with this link:
 https://discord.com/api/oauth2/authorize?client_id=879736921570557963&permissions=3072&scope=bot
@@ -22,7 +23,7 @@ https://discord.com/api/oauth2/authorize?client_id=879736921570557963&permission
 ### Running Locally
 You can either run this directly or through Docker. Either way, you'll
 also need to create a bot token, which you can find instructions on
-[https://www.writebots.com/discord-bot-token/](here).
+[here](https://www.writebots.com/discord-bot-token/).
 
 To run directly, you'll need python3 and pip3 installed. Then you can run the following:
 
