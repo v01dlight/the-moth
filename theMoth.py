@@ -19,7 +19,12 @@ async def on_message(message):
         await message.channel.send('Hello!')
 
     if message.content.startswith('?help'):
-        await message.channel.send('Supported commands:\n`?sooth` - draws a random sooth card\n`?roll` - rolls dice, e.g. `?roll 2d6` or `?roll d20 +5`\n\nWith no arguments, `?roll` will roll a mundane die from Invisible Sun, and with a +[number] argument it will roll a mundane die plus that many magic dice, e.g. `?roll +3`')
+        await message.channel.send('Supported commands:'
+            '\n`?sooth` - draws a random sooth card'
+            '\n`?char` - generates a Suns Apart character'
+            '\n`?roll` - rolls dice, e.g. `?roll 2d6` or `?roll d20 +5`'
+            '\n- With no arguments, `?roll` will roll a mundane die from Invisible Sun, and with a +[number] argument it will roll a mundane die plus that many magic dice, e.g. `?roll +3`'
+            '\n`?save` - rolls a d20. Optionally provide an argument to compare against')
 
     if message.content.startswith('?sooth'):
         # generate a random number between 1 and 60, with leading zeros if needed
@@ -27,7 +32,33 @@ async def on_message(message):
         # post the link to the card image matching that number (Discord should auto-embed the image)
         await message.channel.send("https://app.invisiblesunrpg.com/wpsite/wp-content/uploads/2018/04/"+cardNum+".png")
         # post the link to the details page for that card. The <> wrapping on the URL prevents Discord from embedding a link preview (looks cleaner that way)
-        await message.channel.send("Details: <https://app.invisiblesunrpg.com/soothdeck/card-"+cardNum+"/>")
+        return await message.channel.send("Details: <https://app.invisiblesunrpg.com/soothdeck/card-"+cardNum+"/>")
+
+    if message.content.startswith('?char'):
+        # Using Suns Apart flux:
+        flux = lambda x: ['', '*', '!'][len(x) - len(set(x))]
+        ret = ['```']
+        for s in ['CER', 'QUA', 'SOR']:
+            d = [random.randrange(1, 7) for _ in range(3)]
+            ret.append(f"{s}: {sum(d):2}{flux(d):1} {' + '.join(map(str, d))}")
+        ret.append(f' HP: {random.randrange(1, 7):2}')
+        ret.append(f"DoB: {random.choice(['Spring', 'Summer', 'Autumn', 'Winter'])} {random.randrange(1, 29)}")
+        ret.append('```')
+        return await message.channel.send('\n'.join(ret))
+
+    if message.content.startswith('?save'):
+        save = random.randrange(1, 20)
+        if save == 1:
+            return await message.channel.send('Critical Success! (1)')
+        if save == 20:
+            return await message.channel.send(f'Critical Fail! (20)')
+        try:
+            stat = int(message.content.split()[1])
+            if save <= stat:
+                return await message.channel.send(f'Success! ({save})')
+            return await message.channel.send(f'Fail! ({save})')
+        except:
+            return await message.channel.send(f'Rolled: {save}')
 
     if message.content.startswith('?roll'):
         # split into the dice groups we're rolling
@@ -89,6 +120,9 @@ async def on_message(message):
             # post the final message, e.g.: "4+3+1 = 8"
             return await message.channel.send(f'{lhs} = {rhs}')
         except:
-            return await message.channel.send(f'Invalid dice or bonus spec: {message.content}. Use "?roll" to roll a single Invisible Sun die (mundane). To add magic dice, use +[# of magic dice]. For other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
+            return await message.channel.send(f'Invalid dice or bonus spec: {message.content}.'
+                   ' Use "?roll" to roll a single Invisible Sun die (mundane).'
+                   ' To add magic dice, use +[# of magic dice].'
+                   ' For other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
 
 client.run(os.environ.get('MOTH_BOT_TOKEN'))
