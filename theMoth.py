@@ -3,6 +3,7 @@
 import discord
 import random
 import os
+import re
 
 client = discord.Client()
 
@@ -22,9 +23,15 @@ async def on_message(message):
         await message.channel.send('Supported commands:'
             '\n`?sooth` - draws a random sooth card'
             '\n`?char` - generates a Suns Apart character'
-            '\n`?roll` - rolls dice, e.g. `?roll 2d6` or `?roll d20 +5`'
-            '\n- With no arguments, `?roll` will roll a mundane die from Invisible Sun, and with a +[number] argument it will roll a mundane die plus that many magic dice, e.g. `?roll +3`'
-            '\n`?save` - rolls a d20. Optionally provide an argument to compare against')
+            '\n`?roll` - rolls dice and sums them.'
+            '\n- Arguments of the form `(<num>)d<n>` are treated as `<num>` (or 1) dice, each with `<n>` sides. Add `[+-]<b>` to add a flat bonus'
+            '\n- With no arguments, `?roll` will roll a mundane die from Invisible Sun.'
+            '\n- With a +[number] argument it will roll a mundane die plus that many magic dice, e.g. `?roll +3`'
+            '\n`?save` - rolls a d20 as a save.'
+            '\n- Add arguments of the form `(<num>)a...` or `(<num>)d...` to roll at an advantage or disadvantage'
+            '\n- Add an integer argument to automatically compare to a stat to determine success.'
+            '\n- e.g.: `?save adv` to roll a save at advantage. `?save 2d 14` or `?save -2a 14` to roll a save at double advantage against a STAT of 14.'
+            )
 
     if message.content.startswith('?sooth'):
         # generate a random number between 1 and 60, with leading zeros if needed
@@ -47,18 +54,48 @@ async def on_message(message):
         return await message.channel.send('\n'.join(ret))
 
     if message.content.startswith('?save'):
-        save = random.randint(1, 20)
+        args = message.content.split()[1:]
+        adv  = 0
+        stat = None
+        for arg in args:
+            m = re.match('^(-?\d*)([ad])', arg)
+            if m:
+                m = m.groups()
+                if m[1] =='a':
+                    adv += int(m[0] or 1)
+                else:
+                    adv -= int(m[0] or 1)
+                continue
+            try:
+                newstat = int(arg)
+                if stat is not None:
+                    return await message.channel.send(f'Too many stat arguments: {stat} and {arg}.')
+                stat = newstat
+            except:
+                return await message.channel.send(f'Invalid argument: {arg}')
+        saves = [random.randint(1, 20) for _ in range(abs(adv) + 1)]
+
+        if adv > 0:
+            save = min(saves)
+        else:
+            save = max(saves)
+
+        if adv:
+            saves = ', '.join(map(str, saves)) + f': **{save}**'
+        else:
+            saves = f'**{save}**'
+
         if save == 1:
-            return await message.channel.send('Critical Success! (1)')
+            return await message.channel.send(f'Critical Success! ({saves})')
         if save == 20:
-            return await message.channel.send(f'Critical Fail! (20)')
+            return await message.channel.send(f'Critical Fail! ({saves})')
         try:
             stat = int(message.content.split()[1])
             if save <= stat:
-                return await message.channel.send(f'Success! ({save})')
-            return await message.channel.send(f'Fail! ({save})')
+                return await message.channel.send(f'Success! ({saves})')
+            return await message.channel.send(f'Fail! ({saves})')
         except:
-            return await message.channel.send(f'Rolled: {save}')
+            return await message.channel.send(f'Rolled: {saves}')
 
     if message.content.startswith('?roll'):
         # split into the dice groups we're rolling
