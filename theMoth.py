@@ -39,15 +39,15 @@ async def on_message(message):
         flux = lambda x: ['', '*', '!'][len(x) - len(set(x))]
         ret = ['```']
         for s in ['CER', 'QUA', 'SOR']:
-            d = [random.randrange(1, 7) for _ in range(3)]
+            d = [random.randint(1, 6) for _ in range(3)]
             ret.append(f"{s}: {sum(d):2}{flux(d):1} {' + '.join(map(str, d))}")
-        ret.append(f' HP: {random.randrange(1, 7):2}')
+        ret.append(f' HP: {random.randint(1, 6):2}')
         ret.append(f"DoB: {random.choice(['Spring', 'Summer', 'Autumn', 'Winter'])} {random.randrange(1, 29)}")
         ret.append('```')
         return await message.channel.send('\n'.join(ret))
 
     if message.content.startswith('?save'):
-        save = random.randrange(1, 20)
+        save = random.randint(1, 20)
         if save == 1:
             return await message.channel.send('Critical Success! (1)')
         if save == 20:
