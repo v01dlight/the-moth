@@ -30,7 +30,8 @@ async def on_message(message):
             '\n`?save` - rolls a d20 as a save.'
             '\n- Add arguments of the form `(<num>)a...` or `(<num>)d...` to roll at an advantage or disadvantage'
             '\n- Add an integer argument to automatically compare to a stat to determine success.'
-            '\n- e.g.: `?save adv` to roll a save at advantage. `?save 2d 14` or `?save -2a 14` to roll a save at double advantage against a STAT of 14.'
+            '\n- e.g.: `?save 14 adv` or `?save -1dis 14` to roll a save at advantage against a stat of 14.'
+            '\n- e.g.: `?save 2d 14` or `?save -2a 14` or `?save d 14 d` to roll a save at double disadvantage against a STAT of 14.'
             )
 
     if message.content.startswith('?sooth'):
@@ -89,12 +90,11 @@ async def on_message(message):
             return await message.channel.send(f'Critical Success! ({saves})')
         if save == 20:
             return await message.channel.send(f'Critical Fail! ({saves})')
-        try:
-            stat = int(message.content.split()[1])
+        if stat:
             if save <= stat:
                 return await message.channel.send(f'Success! ({saves})')
             return await message.channel.send(f'Fail! ({saves})')
-        except:
+        else:
             return await message.channel.send(f'Rolled: {saves}')
 
     if message.content.startswith('?roll'):
