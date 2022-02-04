@@ -128,7 +128,7 @@ async def on_message(message):
                     if fluxcount == 6: res += "Hexa-"
                     if fluxcount == 7: res += "Hepta-"
                     if fluxcount == 8: res += "Octo-"
-                    if fluxcount == 9: res += "VISLA GAZES UPON YOU... how did you even do this? "
+                    if fluxcount >= 9: res += "VISLA GAZES UPON YOU... how did you even do this? "
                     res += "Flux!"
                 return await message.channel.send(res)
             res = []
