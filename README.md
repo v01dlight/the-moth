@@ -11,6 +11,8 @@
 
 -can track flux for Invisible Sun dice (thanks [Baconaetor](https://github.com/Baconaetor)!)
 
+-can roll saves and generate character stats for Suns Apart (thanks again [xPMo](https://github.com/xPMo)!)
+
 -Docker support (thanks [lackita](https://github.com/lackita)!)
 ### Usage:
 -Add The Moth bot to your Discord server with this link:
