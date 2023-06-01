@@ -18,12 +18,10 @@ bot = discord.Bot()
 async def on_ready():
     print(f'We have logged in as {bot.user}')
 
-@bot.slash_command(name='sooth', description='Draw a random sooth card')
-async def sooth(ctx):
-    # generate a random number between 1 and 60, with leading zeros if needed
-    cardNum = str(random.randint(1,60)).zfill(2)
+def soothcardembed(cardNum):
     # post the link to the card image matching that number (Discord should auto-embed the image)
     # post the link to the details page for that card. The <> wrapping on the URL prevents Discord from embedding a link preview (looks cleaner that way)
+    cardNum = str(cardNum).zfill(2)
     s = requests.session()
     con = s.get(f'https://app.invisiblesunrpg.com/soothdeck/card-{cardNum}/')
     soup = BeautifulSoup(con.text).find('article')
@@ -36,6 +34,24 @@ async def sooth(ctx):
     )
     embed.set_image(url=f"https://app.invisiblesunrpg.com/wpsite/wp-content/uploads/2018/04/{cardNum}.png")
     await ctx.respond(None, embed=embed)
+
+def get_sooth_list():
+    s = requests.session()
+    con = s.get(f'https://app.invisiblesunrpg.com/soothdeck/')
+    soup = BeautifulSoup(con.text).find('article')
+    def li2kv(x):
+        x = x.text.split('. ')
+        return (x[1].lower(), {'name': x[1], 'num': x[0]})
+    cards = dict(map(li2kv, soup.find_all('li')))
+    return cards
+
+SOOTH_DECK = get_sooth_list()
+
+@bot.slash_command(name='sooth', description='Draw a random sooth card')
+async def sooth(ctx):
+    # generate a random number between 1 and 60, with leading zeros if needed
+    cardNum = random.randint(1,60)
+    return await ctx.respond(None, embed=soothcardembed(cardNum))
 
 @bot.slash_command(name='char', description='Generate a random character')
 async def char(ctx):
@@ -89,7 +105,6 @@ async def debug(ctx):
 
 @bot.slash_command(name='roll', description='Roll dice. Defaults to a mundane die (d10 with 0).')
 async def roll(ctx, dice=commands.Option(str, 'Use +[num] to add Invisible Sun MD. Use [num]d[sides] ... (+|-)[bonus] to roll arbitrary dice.', default='')):
-    print(dice)
     if not dice:
         # if it just told to roll, roll a standard mundane die
         res = random.randrange(10)
@@ -139,7 +154,7 @@ async def roll(ctx, dice=commands.Option(str, 'Use +[num] to add Invisible Sun M
             res += [1 + random.randrange(sides) for _ in range(count)]
         if len(res) < 2 and not bonus:
             # only rolled one die, just post its roll
-            return await ctx.respond(str(res[0]))
+            return await ctx.respond(f'{dice}: {res[0]}')
         # rhs: total sum
         rhs = sum(res) + bonus
         # lhs: dice rolls joined by '+'
@@ -150,7 +165,7 @@ async def roll(ctx, dice=commands.Option(str, 'Use +[num] to add Invisible Sun M
         elif bonus < 0:
             lhs += f'{bonus}'
         # post the final message, e.g.: "4+3+1 = 8"
-        return await ctx.respond(f'{lhs} = {rhs}')
+        return await ctx.respond(f'{dice}: {lhs} = {rhs}')
     except:
         return await ctx.respond(f'Invalid dice or bonus spec: {dice}.'
                '\nUse "/roll" to roll a single Invisible Sun die (mundane).'
@@ -158,6 +173,17 @@ async def roll(ctx, dice=commands.Option(str, 'Use +[num] to add Invisible Sun M
                '\nFor other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
 
 @bot.slash_command(name='getsooth', description='Get details of a given sooth card')
-async def getsooth(ctx, card=commands.Option(str, 'Card name'
+async def getsooth(ctx, card=commands.Option(str, 'Unique prefix to card name', default='')):
+    if not card:
+        deck = ', '.join(map(lambda c: c['name'], SOOTH_DECK.values()))
+        return await ctx.respond(f'Cards:\n{deck}')
+    keys = list(filter(lambda k: k.startswith(card.lower()), SOOTH_DECK))
+    if len(keys) > 1:
+        keys = list(map(lambda k: SOOTH_DECK[k]['name'], keys))
+        keys = ', '.join(keys[0:-1]) + ' or ' + keys[-1]
+        return await ctx.respond(f'Did you mean {keys}?')
+    if len(keys):
+        return await ctx.respond(None, embed=soothcardembed(ctx, SOOTH_DECK[keys[0]]['num']))
+    return await ctx.respond('No matching sooth card!')
 
 bot.run(token)
