@@ -73,7 +73,7 @@ async def getsooth(ctx, prefix=commands.Option(str, 'Unique prefix to card name'
     if not prefix:
         embed = discord.Embed(
             title='Sooth Deck',
-            description=f"https://app.invisiblesunrpg.com/soothdeck"
+            url="https://app.invisiblesunrpg.com/soothdeck"
         )
         idx = 1
         for family in ['Secrets', 'Visions', 'Mysteries', 'Notions']:
