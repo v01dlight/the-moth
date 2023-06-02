@@ -16,42 +16,78 @@ bot = discord.Bot()
 
 @bot.event
 async def on_ready():
-    print(f'We have logged in as {bot.user}')
-
-def soothcardembed(cardNum):
-    # post the link to the card image matching that number (Discord should auto-embed the image)
-    # post the link to the details page for that card. The <> wrapping on the URL prevents Discord from embedding a link preview (looks cleaner that way)
-    cardNum = str(cardNum).zfill(2)
-    s = requests.session()
-    con = s.get(f'https://app.invisiblesunrpg.com/soothdeck/card-{cardNum}/')
-    soup = BeautifulSoup(con.text).find('article')
-    name = soup.find('h2').text
-    meanings = ''.join(map(str, soup.find(string='Meanings:').find_parent('p').contents))
-    meanings = html2text(meanings)
-    embed = discord.Embed(
-        title=name,
-        description=f"[Card details](https://app.invisiblesunrpg.com/soothdeck/card-{cardNum}/)\n{meanings}"
-    )
-    embed.set_image(url=f"https://app.invisiblesunrpg.com/wpsite/wp-content/uploads/2018/04/{cardNum}.png")
-    await ctx.respond(None, embed=embed)
+    logging.info(f'We have logged in as {bot.user}')
 
 def get_sooth_list():
     s = requests.session()
     con = s.get(f'https://app.invisiblesunrpg.com/soothdeck/')
     soup = BeautifulSoup(con.text).find('article')
-    def li2kv(x):
-        x = x.text.split('. ')
-        return (x[1].lower(), {'name': x[1], 'num': x[0]})
-    cards = dict(map(li2kv, soup.find_all('li')))
-    return cards
 
-SOOTH_DECK = get_sooth_list()
+    by_name = dict()
+    by_num = dict()
+
+    for li in soup.find_all('li'):
+        card = SoothCard(li)
+        by_num[int(card.num)] = card
+        by_name[card.name.lower()] = card
+
+    return (by_name, by_num)
+
+class SoothCard:
+    def __init__(self, soup):
+        self.link = soup.find('a')['href']
+        self.num, self.name = soup.text.split('. ')
+
+    def embed(self):
+        znum = str(self.num).zfill(2)
+
+        # cache results in object
+        if not hasattr(self, 'soup'):
+            s = requests.session()
+            con = s.get(f'https://app.invisiblesunrpg.com/soothdeck/card-{znum}/')
+            self.soup = BeautifulSoup(con.text).find('article')
+            self.flavor = self.soup.find('p', {'class': 'flavor'}).text
+            self.meanings = self.soup.find(string='Meanings:').find_parent('p').contents[1]
+
+        embed = discord.Embed(
+            title=self.name,
+            description=self.meanings,
+            url=f'https://app.invisiblesunrpg.com/soothdeck/card-{znum}/'
+        )
+        embed.set_footer(text=self.flavor)
+        embed.set_image(url=f"https://app.invisiblesunrpg.com/wpsite/wp-content/uploads/2018/04/{znum}.png")
+        return embed
+
+    def mdlink(self):
+        return f'[{self.num}. {self.name}]({self.link})'
+
+
+DECK_BY_NAME, DECK_BY_NUM = get_sooth_list()
 
 @bot.slash_command(name='sooth', description='Draw a random sooth card')
 async def sooth(ctx):
-    # generate a random number between 1 and 60, with leading zeros if needed
-    cardNum = random.randint(1,60)
-    return await ctx.respond(None, embed=soothcardembed(cardNum))
+    return await ctx.respond(None, embed=DECK_BY_NUM[random.randint(1,60)].embed())
+
+@bot.slash_command(name='getsooth', description='Get details of a given sooth card')
+async def getsooth(ctx, prefix=commands.Option(str, 'Unique prefix to card name', default='')):
+    if not prefix:
+        embed = discord.Embed(
+            title='Sooth Deck',
+            description=f"https://app.invisiblesunrpg.com/soothdeck"
+        )
+        idx = 1
+        for family in ['Secrets', 'Visions', 'Mysteries', 'Notions']:
+            embed.add_field(name=family, value='\n'.join(f'{i}. {DECK_BY_NUM[i].name}' for i in range(idx, idx + 15)))
+            idx += 15
+        return await ctx.respond(None, embed=embed)
+    cards = [card for name, card in DECK_BY_NAME.items() if name.startswith(prefix.lower())]
+    if len(cards) > 1:
+        cards = list(map(lambda c: c.name, cards))
+        cards = ', '.join(cards[0:-1]) + ' or ' + cards[-1]
+        return await ctx.respond(f'Did you mean {cards}?')
+    if len(cards):
+        return await ctx.respond(None, embed=cards[0].embed())
+    return await ctx.respond('No matching sooth card!')
 
 @bot.slash_command(name='char', description='Generate a random character')
 async def char(ctx):
@@ -96,12 +132,6 @@ async def save(
         return await ctx.respond(f'Fail! ({saves})')
     else:
         return await ctx.respond(f'Rolled: {saves}')
-
-@bot.slash_command(name='debug', description='print context on localhost')
-async def debug(ctx):
-    logging.warning(vars(ctx))
-    logging.warning(json.dumps(ctx.interaction.data))
-    return await ctx.respond('[O_O]')
 
 @bot.slash_command(name='roll', description='Roll dice. Defaults to a mundane die (d10 with 0).')
 async def roll(ctx, dice=commands.Option(str, 'Use +[num] to add Invisible Sun MD. Use [num]d[sides] ... (+|-)[bonus] to roll arbitrary dice.', default='')):
@@ -172,18 +202,5 @@ async def roll(ctx, dice=commands.Option(str, 'Use +[num] to add Invisible Sun M
                '\nTo add magic dice, use +[# of magic dice].'
                '\nFor other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
 
-@bot.slash_command(name='getsooth', description='Get details of a given sooth card')
-async def getsooth(ctx, card=commands.Option(str, 'Unique prefix to card name', default='')):
-    if not card:
-        deck = ', '.join(map(lambda c: c['name'], SOOTH_DECK.values()))
-        return await ctx.respond(f'Cards:\n{deck}')
-    keys = list(filter(lambda k: k.startswith(card.lower()), SOOTH_DECK))
-    if len(keys) > 1:
-        keys = list(map(lambda k: SOOTH_DECK[k]['name'], keys))
-        keys = ', '.join(keys[0:-1]) + ' or ' + keys[-1]
-        return await ctx.respond(f'Did you mean {keys}?')
-    if len(keys):
-        return await ctx.respond(None, embed=soothcardembed(ctx, SOOTH_DECK[keys[0]]['num']))
-    return await ctx.respond('No matching sooth card!')
 
 bot.run(token)
