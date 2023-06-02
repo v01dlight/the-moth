@@ -35,7 +35,7 @@ def get_sooth_list():
 
 class SoothCard:
     def __init__(self, soup):
-        self.link = soup.find('a')['href']
+        self.url = soup.find('a')['href']
         self.num, self.name = soup.text.split('. ')
 
     def embed(self):
@@ -44,7 +44,7 @@ class SoothCard:
         # cache results in object
         if not hasattr(self, 'soup'):
             s = requests.session()
-            con = s.get(f'https://app.invisiblesunrpg.com/soothdeck/card-{znum}/')
+            con = s.get(self.url)
             self.soup = BeautifulSoup(con.text).find('article')
             self.flavor = self.soup.find('p', {'class': 'flavor'}).text
             self.meanings = self.soup.find(string='Meanings:').find_parent('p').contents[1]
@@ -52,7 +52,7 @@ class SoothCard:
         embed = discord.Embed(
             title=self.name,
             description=self.meanings,
-            url=f'https://app.invisiblesunrpg.com/soothdeck/card-{znum}/'
+            url=self.url
         )
         embed.set_footer(text=self.flavor)
         embed.set_image(url=f"https://app.invisiblesunrpg.com/wpsite/wp-content/uploads/2018/04/{znum}.png")
@@ -201,6 +201,5 @@ async def roll(ctx, dice=commands.Option(str, 'Use +[num] to add Invisible Sun M
                '\nUse "/roll" to roll a single Invisible Sun die (mundane).'
                '\nTo add magic dice, use +[# of magic dice].'
                '\nFor other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
-
 
 bot.run(token)
