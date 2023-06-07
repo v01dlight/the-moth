@@ -6,6 +6,7 @@
 
 ### Features:
 
+- supports slash commands (thanks [xPMo](https://github.com/xPMo)!)
 - can draw sooth cards
 - can roll dice (thanks [xPMo](https://github.com/xPMo)!)
 - can track flux for Invisible Sun dice (thanks [Baconaetor](https://github.com/Baconaetor)!)
