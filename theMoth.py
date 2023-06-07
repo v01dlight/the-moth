@@ -1,165 +1,206 @@
 #!/usr/bin/python
-
 import discord
-import random
+import logging
 import os
+import random
 import re
+import requests
+from bs4 import BeautifulSoup
+from discord import commands
+from html2text import html2text
 
-client = discord.Client()
+token = os.environ.get('MOTH_BOT_TOKEN')
 
-@client.event
+intents = discord.Intents.default()
+bot = discord.Bot()
+
+@bot.event
 async def on_ready():
-    print('We have logged in as {0.user}'.format(client))
+    logging.info(f'We have logged in as {bot.user}')
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
+def get_sooth_list():
+    s = requests.session()
+    con = s.get(f'https://app.invisiblesunrpg.com/soothdeck/')
+    soup = BeautifulSoup(con.text).find('article')
 
-    if message.content.startswith('?hello'):
-        await message.channel.send('Hello!')
+    by_name = dict()
+    by_num = dict()
 
-    if message.content.startswith('?help'):
-        await message.channel.send('Supported commands:'
-            '\n`?sooth` - draws a random sooth card'
-            '\n`?char` - generates a Suns Apart character'
-            '\n`?roll` - rolls dice and sums them.'
-            '\n- Arguments of the form `(<num>)d<n>` are treated as `<num>` (or 1) dice, each with `<n>` sides. Add `[+-]<b>` to add a flat bonus'
-            '\n- With no arguments, `?roll` will roll a mundane die from Invisible Sun.'
-            '\n- With a +[number] argument it will roll a mundane die plus that many magic dice, e.g. `?roll +3`'
-            '\n`?save` - rolls a d20 as a save.'
-            '\n- Add arguments of the form `(<num>)a...` or `(<num>)d...` to roll at an advantage or disadvantage'
-            '\n- Add an integer argument to automatically compare to a stat to determine success.'
-            '\n- e.g.: `?save 14 adv` or `?save -1dis 14` to roll a save at advantage against a stat of 14.'
-            '\n- e.g.: `?save 2d 14` or `?save -2a 14` or `?save d 14 d` to roll a save at double disadvantage against a STAT of 14.'
-            )
+    for li in soup.find_all('li'):
+        card = SoothCard(li)
+        by_num[int(card.num)] = card
+        by_name[card.name.lower()] = card
 
-    if message.content.startswith('?sooth'):
-        # generate a random number between 1 and 60, with leading zeros if needed
-        cardNum = str(random.randint(1,60)).zfill(2)
-        # post the link to the card image matching that number (Discord should auto-embed the image)
-        await message.channel.send("https://app.invisiblesunrpg.com/wpsite/wp-content/uploads/2018/04/"+cardNum+".png")
-        # post the link to the details page for that card. The <> wrapping on the URL prevents Discord from embedding a link preview (looks cleaner that way)
-        return await message.channel.send("Details: <https://app.invisiblesunrpg.com/soothdeck/card-"+cardNum+"/>")
+    return (by_name, by_num)
 
-    if message.content.startswith('?char'):
-        # Using Suns Apart flux:
-        flux = lambda x: ['', '*', '!'][len(x) - len(set(x))]
-        ret = ['```']
-        for s in ['CER', 'QUA', 'SOR']:
-            d = [random.randint(1, 6) for _ in range(3)]
-            ret.append(f"{s}: {sum(d):2}{flux(d):1} {' + '.join(map(str, d))}")
-        ret.append(f' HP: {random.randint(1, 6):2}')
-        ret.append(f"DoB: {random.choice(['Spring', 'Summer', 'Autumn', 'Winter'])} {random.randrange(1, 29)}")
-        ret.append('```')
-        return await message.channel.send('\n'.join(ret))
+class SoothCard:
+    def __init__(self, soup):
+        self.link = soup.find('a')['href']
+        self.num, self.name = soup.text.split('. ')
 
-    if message.content.startswith('?save'):
-        args = message.content.split()[1:]
-        adv  = 0
-        stat = None
-        for arg in args:
-            m = re.match('^(-?\d*)([ad])', arg)
-            if m:
-                m = m.groups()
-                if m[1] =='a':
-                    adv += int(m[0] or 1)
-                else:
-                    adv -= int(m[0] or 1)
-                continue
-            try:
-                newstat = int(arg)
-                if stat is not None:
-                    return await message.channel.send(f'Too many stat arguments: {stat} and {arg}.')
-                stat = newstat
-            except:
-                return await message.channel.send(f'Invalid argument: {arg}')
-        saves = [random.randint(1, 20) for _ in range(abs(adv) + 1)]
+    def embed(self):
+        znum = str(self.num).zfill(2)
 
-        if adv > 0:
-            save = min(saves)
-        else:
-            save = max(saves)
+        # cache results in object
+        if not hasattr(self, 'soup'):
+            s = requests.session()
+            con = s.get(f'https://app.invisiblesunrpg.com/soothdeck/card-{znum}/')
+            self.soup = BeautifulSoup(con.text).find('article')
+            self.flavor = self.soup.find('p', {'class': 'flavor'}).text
+            self.meanings = self.soup.find(string='Meanings:').find_parent('p').contents[1]
 
-        if adv:
-            saves = ', '.join(map(str, saves)) + f': **{save}**'
-        else:
-            saves = f'**{save}**'
+        embed = discord.Embed(
+            title=self.name,
+            description=self.meanings,
+            url=f'https://app.invisiblesunrpg.com/soothdeck/card-{znum}/'
+        )
+        embed.set_footer(text=self.flavor)
+        embed.set_image(url=f"https://app.invisiblesunrpg.com/wpsite/wp-content/uploads/2018/04/{znum}.png")
+        return embed
 
-        if save == 1:
-            return await message.channel.send(f'Critical Success! ({saves})')
-        if save == 20:
-            return await message.channel.send(f'Critical Fail! ({saves})')
-        if stat:
-            if save <= stat:
-                return await message.channel.send(f'Success! ({saves})')
-            return await message.channel.send(f'Fail! ({saves})')
-        else:
-            return await message.channel.send(f'Rolled: {saves}')
+    def mdlink(self):
+        return f'[{self.num}. {self.name}]({self.link})'
 
-    if message.content.startswith('?roll'):
-        # split into the dice groups we're rolling
-        args = message.content.split()[1:]
-        if not args:
-            # if it just told to roll, roll a standard mundane die
-            res = random.randrange(10)
-            return await message.channel.send(res)
-        try:
-            if args[0].startswith('+'):
-                if len(args) > 1: raise ValueError
-                # if adding magic dice, roll the mundane die, then number of magic die
-                count = int(args[0])
-                res = "Mundane: " + str(random.randrange(10)) + '\n' + "Magic: "
-                fluxcount = 0
-                for _ in range(count -1):
-                    roll = random.randrange(10)
-                    res += str(roll) + " | "
-                    if roll == 0: fluxcount += 1
+
+DECK_BY_NAME, DECK_BY_NUM = get_sooth_list()
+
+@bot.slash_command(name='sooth', description='Draw a random sooth card')
+async def sooth(ctx):
+    return await ctx.respond(None, embed=DECK_BY_NUM[random.randint(1,60)].embed())
+
+@bot.slash_command(name='getsooth', description='Get details of a given sooth card')
+async def getsooth(ctx, prefix=commands.Option(str, 'Unique prefix to card name', default='')):
+    if not prefix:
+        embed = discord.Embed(
+            title='Sooth Deck',
+            url="https://app.invisiblesunrpg.com/soothdeck"
+        )
+        idx = 1
+        for family in ['Secrets', 'Visions', 'Mysteries', 'Notions']:
+            embed.add_field(name=family, value='\n'.join(f'{i}. {DECK_BY_NUM[i].name}' for i in range(idx, idx + 15)))
+            idx += 15
+        return await ctx.respond(None, embed=embed)
+    cards = [card for name, card in DECK_BY_NAME.items() if name.startswith(prefix.lower())]
+    if len(cards) > 1:
+        cards = list(map(lambda c: c.name, cards))
+        cards = ', '.join(cards[0:-1]) + ' or ' + cards[-1]
+        return await ctx.respond(f'Did you mean {cards}?')
+    if len(cards):
+        return await ctx.respond(None, embed=cards[0].embed())
+    return await ctx.respond('No matching sooth card!')
+
+@bot.slash_command(name='char', description='Generate a random character')
+async def char(ctx):
+    # Using Suns Apart flux:
+    flux = lambda x: ['', '*', '!'][len(x) - len(set(x))]
+    ret = ['```']
+    for s in ['CER', 'QUA', 'SOR']:
+        d = [random.randint(1, 6) for _ in range(3)]
+        ret.append(f"{s}: {sum(d):2}{flux(d):1} {' + '.join(map(str, d))}")
+    ret.append(f' HP: {random.randint(1, 6):2}')
+    ret.append(f"DoB: {random.choice(['Spring', 'Summer', 'Autumn', 'Winter'])} {random.randrange(1, 29)}")
+    ret.append('```')
+    return await ctx.respond('\n'.join(ret))
+
+@bot.slash_command(name='save', description='Make a saving throw')
+async def save(
+        ctx,
+        advantage: commands.Option(int, 'Use positive numbers for advantage, negative numbers for disadvantage.', required=False),
+        stat: commands.Option(int, 'The value of the stat you are checking against.', required=False)
+    ):
+    adv  = advantage or 0
+    # TODO: Add args
+    saves = [random.randint(1, 20) for _ in range(abs(adv) + 1)]
+
+    if adv > 0:
+        save = min(saves)
+    else:
+        save = max(saves)
+
+    if adv:
+        saves = ', '.join(map(str, saves)) + f': **{save}**'
+    else:
+        saves = f'**{save}**'
+
+    if save == 1:
+        return await ctx.respond(f'Critical Success! ({saves})')
+    if save == 20:
+        return await ctx.respond(f'Critical Fail! ({saves})')
+    if stat:
+        if save <= stat:
+            return await ctx.respond(f'Success! ({saves})')
+        return await ctx.respond(f'Fail! ({saves})')
+    else:
+        return await ctx.respond(f'Rolled: {saves}')
+
+@bot.slash_command(name='roll', description='Roll dice. Defaults to a mundane die (d10 with 0).')
+async def roll(ctx, dice=commands.Option(str, 'Use +[num] to add Invisible Sun MD. Use [num]d[sides] ... (+|-)[bonus] to roll arbitrary dice.', default='')):
+    if not dice:
+        # if it just told to roll, roll a standard mundane die
+        res = random.randrange(10)
+        return await ctx.respond(res)
+    args = str(dice).split()
+    try:
+
+        # Invisible Sun roll
+        if args[0].startswith('+'):
+            if len(args) > 1: raise ValueError
+            # if adding magic dice, roll the mundane die, then number of magic die
+            count = int(args[0])
+            res = "Mundane: " + str(random.randrange(10)) + '\n' + "Magic: "
+            fluxcount = 0
+            for _ in range(count -1):
                 roll = random.randrange(10)
-                res += str(roll)
+                res += str(roll) + " | "
                 if roll == 0: fluxcount += 1
-                if fluxcount > 0:
-                    res += '\n'
-                    if fluxcount == 1: res += "Minor "
-                    if fluxcount == 2: res += "Major "
-                    if fluxcount == 3: res += "Grand "
-                    if fluxcount == 4: res += "Tetra-"
-                    if fluxcount == 5: res += "Penta-"
-                    if fluxcount == 6: res += "Hexa-"
-                    if fluxcount == 7: res += "Hepta-"
-                    if fluxcount == 8: res += "Octo-"
-                    if fluxcount >= 9: res += "VISLA GAZES UPON YOU... how did you even do this? "
-                    res += "Flux!"
-                return await message.channel.send(res)
-            res = []
-            bonus = 0
-            for arg in args:
-                if arg[0] in ['+', '-']:
-                    # bonus modifier
-                    bonus += int(arg)
-                    continue
-                count, sides = arg.split('d')
-                sides = int(sides)
-                count = int(count or 1)
-                res += [1 + random.randrange(sides) for _ in range(count)]
-            if len(res) < 2 and not bonus:
-                # only rolled one die, just post its roll
-                return await message.channel.send(str(res[0]))
-            # rhs: total sum
-            rhs = sum(res) + bonus
-            # lhs: dice rolls joined by '+'
-            lhs = '+'.join(map(str, res))
-            # add bonus to lhs string
-            if bonus > 0:
-                lhs += f'+{bonus}'
-            elif bonus < 0:
-                lhs += f'{bonus}'
-            # post the final message, e.g.: "4+3+1 = 8"
-            return await message.channel.send(f'{lhs} = {rhs}')
-        except:
-            return await message.channel.send(f'Invalid dice or bonus spec: {message.content}.'
-                   ' Use "?roll" to roll a single Invisible Sun die (mundane).'
-                   ' To add magic dice, use +[# of magic dice].'
-                   ' For other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
+            roll = random.randrange(10)
+            res += str(roll)
+            if roll == 0: fluxcount += 1
+            if fluxcount > 0:
+                res += '\n'
+                if fluxcount == 1: res += "Minor "
+                if fluxcount == 2: res += "Major "
+                if fluxcount == 3: res += "Grand "
+                if fluxcount == 4: res += "Tetra-"
+                if fluxcount == 5: res += "Penta-"
+                if fluxcount == 6: res += "Hexa-"
+                if fluxcount == 7: res += "Hepta-"
+                if fluxcount == 8: res += "Octo-"
+                if fluxcount >= 9: res += "VISLA GAZES UPON YOU... how did you even do this? "
+                res += "Flux!"
+            return await ctx.respond(res)
 
-client.run(os.environ.get('MOTH_BOT_TOKEN'))
+        # Standard roll
+        res = []
+        bonus = 0
+        for arg in args:
+            if arg[0] in ['+', '-']:
+                # bonus modifier
+                bonus += int(arg)
+                continue
+            count, sides = arg.split('d')
+            sides = int(sides)
+            count = int(count or 1)
+            res += [1 + random.randrange(sides) for _ in range(count)]
+        if len(res) < 2 and not bonus:
+            # only rolled one die, just post its roll
+            return await ctx.respond(f'{dice}: {res[0]}')
+        # rhs: total sum
+        rhs = sum(res) + bonus
+        # lhs: dice rolls joined by '+'
+        lhs = '+'.join(map(str, res))
+        # add bonus to lhs string
+        if bonus > 0:
+            lhs += f'+{bonus}'
+        elif bonus < 0:
+            lhs += f'{bonus}'
+        # post the final message, e.g.: "4+3+1 = 8"
+        return await ctx.respond(f'{dice}: {lhs} = {rhs}')
+    except:
+        return await ctx.respond(f'Invalid dice or bonus spec: {dice}.'
+               '\nUse "/roll" to roll a single Invisible Sun die (mundane).'
+               '\nTo add magic dice, use +[# of magic dice].'
+               '\nFor other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
+
+
+bot.run(token)

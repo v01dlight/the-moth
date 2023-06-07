@@ -1,1 +1,4 @@
-discord
+bs4
+html2text
+py-cord
+requests
