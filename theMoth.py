@@ -100,9 +100,14 @@ async def getsooth(ctx, prefix=commands.Option(str, 'Unique prefix to card name'
     if len(cards) > 1:
         cards = list(map(lambda c: c.name, cards))
         cards = ', '.join(cards[0:-1]) + ' or ' + cards[-1]
+        logging.info(f'Matched prefix "{prefix}" to cards "{cards}"')
         return await ctx.respond(f'Did you mean {cards}?')
+
     if len(cards):
+        logging.info(f'Matched prefix "{prefix}" to card "{cards[0].name}"')
         return await ctx.respond(None, embed=cards[0].embed())
+
+    logging.info(f'Could not match "{prefix}"')
     return await ctx.respond('No matching sooth card!')
 
 @bot.slash_command(name='char', description='Generate a random character')
