@@ -3,35 +3,14 @@ import discord
 import logging
 import os
 import random
-import re
 import requests
 from bs4 import BeautifulSoup
 from discord import commands
 from html2text import html2text
 
-token = os.environ.get('MOTH_BOT_TOKEN')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
-intents = discord.Intents.default()
-bot = discord.Bot()
-
-@bot.event
-async def on_ready():
-    logging.info(f'We have logged in as {bot.user}')
-
-def get_sooth_list():
-    s = requests.session()
-    con = s.get(f'https://app.invisiblesunrpg.com/soothdeck/')
-    soup = BeautifulSoup(con.text).find('article')
-
-    by_name = dict()
-    by_num = dict()
-
-    for li in soup.find_all('li'):
-        card = SoothCard(li)
-        by_num[int(card.num)] = card
-        by_name[card.name.lower()] = card
-
-    return (by_name, by_num)
+BS = lambda text: BeautifulSoup(text, 'html.parser')
 
 class SoothCard:
     def __init__(self, soup):
@@ -45,7 +24,7 @@ class SoothCard:
         if not hasattr(self, 'soup'):
             s = requests.session()
             con = s.get(self.url)
-            self.soup = BeautifulSoup(con.text).find('article')
+            self.soup = BS(con.text).find('article')
             self.flavor = self.soup.find('p', {'class': 'flavor'}).text
             self.meanings = self.soup.find(string='Meanings:').find_parent('p').contents[1]
 
@@ -61,15 +40,49 @@ class SoothCard:
     def mdlink(self):
         return f'[{self.num}. {self.name}]({self.link})'
 
+def get_sooth_list():
+    s = requests.session()
+    con = s.get(f'https://app.invisiblesunrpg.com/soothdeck/')
+    soup = BS(con.text).find('article')
+
+    by_name = dict()
+    by_num = dict()
+
+    for li in soup.find_all('li'):
+        card = SoothCard(li)
+        by_num[int(card.num)] = card
+        by_name[card.name.lower()] = card
+
+    return (by_name, by_num)
 
 DECK_BY_NAME, DECK_BY_NUM = get_sooth_list()
+logging.info(f'Loaded {len(DECK_BY_NAME)} cards into Sooth Deck')
+
+def sooth_prefix_match(prefix):
+    return [card for name, card in DECK_BY_NAME.items() if name.startswith(prefix.lower())]
+
+def sooth_complete(ctx: discord.AutocompleteContext):
+    cards = sooth_prefix_match(ctx.value)
+    return [card.name for card in cards]
+
+## Bot
+
+token = os.environ.get('MOTH_BOT_TOKEN')
+intents = discord.Intents.default()
+bot = discord.Bot()
+
+@bot.event
+async def on_ready():
+    logging.info(f'We have logged in as {bot.user}')
 
 @bot.slash_command(name='sooth', description='Draw a random sooth card')
 async def sooth(ctx):
-    return await ctx.respond(None, embed=DECK_BY_NUM[random.randint(1,60)].embed())
+    card = DECK_BY_NUM[random.randint(1,60)]
+    logging.info(f'Drew card {card.num}: {card.name}')
+    return await ctx.respond(None, embed=card.embed())
 
 @bot.slash_command(name='getsooth', description='Get details of a given sooth card')
-async def getsooth(ctx, prefix=commands.Option(str, 'Unique prefix to card name', default='')):
+async def getsooth(ctx, prefix=commands.Option(str, 'Unique prefix to card name', autocomplete=sooth_complete, default='')):
     if not prefix:
         embed = discord.Embed(
             title='Sooth Deck',
@@ -79,8 +92,11 @@ async def getsooth(ctx, prefix=commands.Option(str, 'Unique prefix to card name'
         for family in ['Secrets', 'Visions', 'Mysteries', 'Notions']:
             embed.add_field(name=family, value='\n'.join(f'{i}. {DECK_BY_NUM[i].name}' for i in range(idx, idx + 15)))
             idx += 15
+
         return await ctx.respond(None, embed=embed)
-    cards = [card for name, card in DECK_BY_NAME.items() if name.startswith(prefix.lower())]
+
+    cards = sooth_prefix_match(prefix)
+
     if len(cards) > 1:
         cards = list(map(lambda c: c.name, cards))
         cards = ', '.join(cards[0:-1]) + ' or ' + cards[-1]
