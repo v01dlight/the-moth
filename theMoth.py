@@ -59,7 +59,7 @@ DECK_BY_NAME, DECK_BY_NUM = get_sooth_list()
 logging.info(f'Loaded {len(DECK_BY_NAME)} cards into Sooth Deck')
 
 def sooth_prefix_match(prefix):
-    return [card for name, card in DECK_BY_NAME.items() if name.startswith(prefix.lower())]
+    return [card for name, card in DECK_BY_NAME.items() if any(s.startswith(prefix.lower()) for s in [name, *name.split()])]
 
 def sooth_complete(ctx: discord.AutocompleteContext):
     cards = sooth_prefix_match(ctx.value)
@@ -82,7 +82,7 @@ async def sooth(ctx):
     return await ctx.respond(None, embed=card.embed())
 
 @bot.slash_command(name='getsooth', description='Get details of a given sooth card')
-async def getsooth(ctx, prefix=commands.Option(str, 'Unique prefix to card name', autocomplete=sooth_complete, default='')):
+async def getsooth(ctx, prefix=commands.Option(str, 'Card name or unique prefix', name='card', autocomplete=sooth_complete, default='')):
     if not prefix:
         embed = discord.Embed(
             title='Sooth Deck',
