@@ -113,16 +113,15 @@ async def getsooth(ctx, prefix=commands.Option(str, 'Card name or unique prefix'
 @bot.slash_command(name='char', description='Generate a random character')
 async def char(ctx):
     # Using Suns Apart flux:
-    flux = lambda x: ['', '\*', '!'][len(x) - len(set(x))]
-    embed = discord.Embed()
-    for s in ['Certes', 'Qualia', 'Sortilege']:
+    flux = lambda x: ['', '*', '!'][len(x) - len(set(x))]
+    ret = ['```']
+    for s in ['CER', 'QUA', 'SOR']:
         d = [random.randint(1, 6) for _ in range(3)]
-        embed.add_field(name=s, value=f"**{sum(d)}**{flux(d)} ({', '.join(map(str, d))})", inline=True)
-    embed.add_field(name='HP', value=f'{random.randint(1, 6):2}', inline=True)
-    d = [random.randint(1, 6) for _ in range(2)]
-    embed.add_field(name='AP', value=f"**{sum(d)}**{flux(d)} ({', '.join(map(str, d))})", inline=True)
-    embed.add_field(name='Date of Birth', value=f"{random.choice(['Spring', 'Summer', 'Autumn', 'Winter'])} {random.randrange(1, 29)}")
-    return await ctx.respond(None, embed=embed)
+        ret.append(f"{s}: {sum(d):2}{flux(d):1} {' + '.join(map(str, d))}")
+    ret.append(f' HP: {random.randint(1, 6):2}')
+    ret.append(f"DoB: {random.choice(['Spring', 'Summer', 'Autumn', 'Winter'])} {random.randrange(1, 29)}")
+    ret.append('```')
+    return await ctx.respond('\n'.join(ret))
 
 @bot.slash_command(name='save', description='Make a saving throw')
 async def save(
