@@ -38,6 +38,7 @@ docker build -t the-moth .
 docker run -e MOTH_BOT_TOKEN=$your_bot_token the-moth
 ```
 
+### Running on a Remote Server
 For the "official" instance of the bot, I pay for a cloud server and I run it off that with [pm2](https://www.npmjs.com/package/pm2) to ensure that the bot process stays alive with no downtime. Since I was constantly forgetting how to update the production instance of the bot after making code changes, I created a setup script which automates the process of updating some tooling and replacing the running bot process with a fresh one. So for me, the way I would run this is:
 
 ``` shell
