@@ -28,24 +28,24 @@ To run directly, you'll need python3 and pip3 installed. Then you can run the fo
 
 ``` shell
 pip3 install -r requirements.txt
-MOTH_BOT_TOKEN=<your bot token> python3 theMoth.py
+MOTH_BOT_TOKEN=$your_bot_token python3 theMoth.py
 ```
 
 If you're interested in using docker, you can build and run using the following commands:
 
 ``` shell
 docker build -t the-moth .
-docker run -e MOTH_BOT_TOKEN=<your bot token> the-moth
+docker run -e MOTH_BOT_TOKEN=$your_bot_token the-moth
 ```
 
 For the "official" instance of the bot, I pay for a cloud server and I run it off that with [pm2](https://www.npmjs.com/package/pm2) to ensure that the bot process stays alive with no downtime. Since I was constantly forgetting how to update the production instance of the bot after making code changes, I created a setup script which automates the process of updating some tooling and replacing the running bot process with a fresh one. So for me, the way I would run this is:
 
 ``` shell
-ssh root@<my server ip>
+ssh root@$my_server_ip
 git clone https://github.com/v01dlight/the-moth.git
 cd the-moth
 chmod +x setup.sh
-./setup.sh "<my bot token>"
+./setup.sh "$my_bot_token"
 ```
 
 ### Credits:
