@@ -38,5 +38,15 @@ docker build -t the-moth .
 docker run -e MOTH_BOT_TOKEN=$your_bot_token the-moth
 ```
 
+For the "official" instance of the bot, I pay for a cloud server and I run it off that with [pm2](https://www.npmjs.com/package/pm2) to ensure that the bot process stays alive with no downtime. Since I was constantly forgetting how to update the production instance of the bot after making code changes, I created a setup script which automates the process of updating some tooling and replacing the running bot process with a fresh one. So for me, the way I would run this is:
+
+``` shell
+ssh root@<my server ip>
+git clone https://github.com/v01dlight/the-moth.git
+cd the-moth
+chmod +x setup.sh
+./setup.sh
+```
+
 ### Credits:
 Moth logo image by <a href="https://pixabay.com/users/nika_akin-13521770/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=image&amp;utm_content=4658451">Nika Akin</a> from <a href="https://pixabay.com/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=image&amp;utm_content=4658451">Pixabay</a>.
