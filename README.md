@@ -49,5 +49,21 @@ chmod +x setup.sh
 ./setup.sh "$my_bot_token"
 ```
 
+### Adding Game Information
+
+It would be copyright infringement to add extensive game information to this repository, but logic to parse a file is fair game. MCG was kind enough to provide a searchable text file to backers, and if the bot is informed of that file additional commands become available. You would specify that file in the following way:
+
+```shell
+python theMoth.py --searchable_text_file /path/to/file.txt
+```
+
+### Running Unit Tests
+
+This codebase contains some unit tests, which can be executed by running the following command from the base directory:
+
+```shell
+python -m unittest discover
+```
+
 ### Credits:
 Moth logo image by <a href="https://pixabay.com/users/nika_akin-13521770/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=image&amp;utm_content=4658451">Nika Akin</a> from <a href="https://pixabay.com/?utm_source=link-attribution&amp;utm_medium=referral&amp;utm_campaign=image&amp;utm_content=4658451">Pixabay</a>.
