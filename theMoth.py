@@ -5,7 +5,7 @@ import os
 import random
 import requests
 from bs4 import BeautifulSoup
-from discord import commands
+from discord import commands, ApplicationContext
 from html2text import html2text
 import argparse
 
@@ -252,6 +252,21 @@ if args.searchable_text_file:
         return await ctx.respond(
             str(game.random(category))
         )
+
+    if 'OPENAI_API_KEY' in os.environ:
+        from ai.suggestion import LoggedSuggestionClient
+        from openai import OpenAI
+        suggestion_client = LoggedSuggestionClient(game, OpenAI())
+
+        @bot.slash_command(name='suggest', description='Have AI make a suggestion')
+        async def suggest(
+                ctx: ApplicationContext,
+                category=category_options,
+                prompt=commands.Option(str, "A description to provide to AI of what you're looking for"),
+        ):
+            return await ctx.respond(
+                str(suggestion_client.suggest(category, prompt))
+            )
 
 
 bot.run(token)

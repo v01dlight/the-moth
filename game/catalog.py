@@ -37,5 +37,8 @@ class ItemInformation():
         self.title = title
         self.description = description
 
-    def __str__(self):
+    def __repr__(self):
         return f"{self.title}\n{self.description}"
+
+    def __eq__(self, o):
+        return self.title == o.title and self.description == o.description

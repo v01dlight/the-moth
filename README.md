@@ -57,6 +57,10 @@ It would be copyright infringement to add extensive game information to this rep
 python theMoth.py --searchable_text_file /path/to/file.txt
 ```
 
+#### AI Suggestions
+
+If you further set the environment variable `OPENAI_API_KEY`, it will include a `/suggest` command that makes ChatGPT-based reccomendations based off the loaded game information.
+
 ### Running Unit Tests
 
 This codebase contains some unit tests, which can be executed by running the following command from the base directory:

@@ -85,7 +85,7 @@ class GameInformation(CaseInsensitiveDict):
 
         info.update(cls.separate_categories(
             MultilineCatalog.build(sections[29], "Ephemera Objects"),
-            ["EPHEMERA OBJECTS"] + [f"VANCE {size} SPELL" for size in ["ALPHA", "BETA", "OMEGA"]],
+            ["EPHEMERA OBJECT"] + [f"VANCE {size} SPELL" for size in ["ALPHA", "BETA", "OMEGA"]],
         ))
 
         return GameInformation(info)
