@@ -5,8 +5,9 @@ import os
 import random
 import requests
 from bs4 import BeautifulSoup
-from discord import commands
+from discord import commands, ApplicationContext
 from html2text import html2text
+import argparse
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
@@ -222,5 +223,50 @@ async def roll(ctx, dice=commands.Option(str, 'Use +[num] to add Invisible Sun M
                '\nUse "/roll" to roll a single Invisible Sun die (mundane).'
                '\nTo add magic dice, use +[# of magic dice].'
                '\nFor other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-s', '--searchable_text_file')
+args = parser.parse_args()
+
+if args.searchable_text_file:
+    from game.information import GameInformation
+    game = GameInformation.parse(args.searchable_text_file)
+    category_options = commands.Option(game.categories(), "The category within the rules")
+
+    @bot.slash_command(name='lookup', description='Lookup game information available in searchable text file provided to backers')
+    async def lookup(
+            ctx,
+            category=category_options,
+            information=commands.Option(str, "The name of the information you are looking up"),
+    ):
+        return await ctx.respond(
+            str(game.lookup(category, information))
+        )
+
+    @bot.slash_command(name='random', description='Find a random entry in the provided category')
+    async def random(
+            ctx,
+            category=category_options,
+    ):
+        return await ctx.respond(
+            str(game.random(category))
+        )
+
+    if 'OPENAI_API_KEY' in os.environ:
+        from ai.suggestion import LoggedSuggestionClient
+        from openai import OpenAI
+        suggestion_client = LoggedSuggestionClient(game, OpenAI())
+
+        @bot.slash_command(name='suggest', description='Have AI make a suggestion')
+        async def suggest(
+                ctx: ApplicationContext,
+                category=category_options,
+                prompt=commands.Option(str, "A description to provide to AI of what you're looking for"),
+        ):
+            return await ctx.respond(
+                str(suggestion_client.suggest(category, prompt))
+            )
+
 
 bot.run(token)
