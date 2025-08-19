@@ -115,10 +115,10 @@ async def char(ctx):
     # Using Suns Apart flux:
     flux = lambda x: ['', '*', '!'][len(x) - len(set(x))]
     ret = ['```']
-    for s in ['CER', 'QUA', 'SOR']:
+    for s in ['BODY', 'MIND', 'SOUL']:
         d = [random.randint(1, 6) for _ in range(3)]
         ret.append(f"{s}: {sum(d):2}{flux(d):1} {' + '.join(map(str, d))}")
-    ret.append(f' HP: {random.randint(1, 6):2}')
+    ret.append(f' Guard: {random.randint(1, 6):2}')
     ret.append(f"DoB: {random.choice(['Spring', 'Summer', 'Autumn', 'Winter'])} {random.randrange(1, 29)}")
     ret.append('```')
     return await ctx.respond('\n'.join(ret))
