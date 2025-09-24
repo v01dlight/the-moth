@@ -4,9 +4,12 @@ import logging
 import os
 import random
 import requests
+import sqlite3
 from bs4 import BeautifulSoup
 from discord import commands
 from html2text import html2text
+from datetime import datetime, timedelta
+import asyncio
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
@@ -20,7 +23,6 @@ class SoothCard:
     def embed(self):
         znum = str(self.num).zfill(2)
 
-        # cache results in object
         if not hasattr(self, 'soup'):
             s = requests.session()
             con = s.get(self.url)
@@ -36,9 +38,6 @@ class SoothCard:
         embed.set_footer(text=self.flavor)
         embed.set_image(url=f"https://app.invisiblesunrpg.com/wpsite/wp-content/uploads/2018/04/{znum}.png")
         return embed
-
-    def mdlink(self):
-        return f'[{self.num}. {self.name}]({self.link})'
 
 def get_sooth_list():
     s = requests.session()
@@ -71,9 +70,127 @@ token = os.environ.get('MOTH_BOT_TOKEN')
 intents = discord.Intents.default()
 bot = discord.Bot()
 
+# ----------------------
+# Timer Database Helpers
+# ----------------------
+
+DB_FILE = "timers.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS timers
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  user_id INTEGER,
+                  channel_id INTEGER,
+                  name TEXT,
+                  end_time TEXT)''')
+    conn.commit()
+    conn.close()
+
+async def timer_watcher():
+    await bot.wait_until_ready()
+    while not bot.is_closed():
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        now = datetime.utcnow()
+        c.execute("SELECT id, user_id, channel_id, name, end_time FROM timers")
+        rows = c.fetchall()
+        for row in rows:
+            tid, user_id, channel_id, name, end_time = row
+            end_time = datetime.fromisoformat(end_time)
+            if now >= end_time:
+                logging.info(f"Timer {name} (id={tid}) expired, sending notification...")
+                channel = bot.get_channel(channel_id)
+                if channel:
+                    try:
+                        await channel.send(f"<@{user_id}>, timer complete: **{name}**")
+                    except Exception as e:
+                        logging.error(f"Failed to send message for timer {tid}: {e}")
+                c.execute("DELETE FROM timers WHERE id = ?", (tid,))
+        conn.commit()
+        conn.close()
+        await asyncio.sleep(30)
+
+init_db()
+
+# ----------------------
+# Timer Commands
+# ----------------------
+
+from discord.commands import SlashCommandGroup
+timer = SlashCommandGroup("timer", "Manage timers")
+
+def parse_duration(duration: str) -> timedelta:
+    """Parse strings like '3d', '5h', '2w', '10m' into timedelta."""
+    units = {"d": "days", "h": "hours", "m": "minutes", "w": "weeks"}
+    amount = int(''.join([c for c in duration if c.isdigit()]))
+    unit = ''.join([c for c in duration if c.isalpha()])
+    if unit not in units:
+        raise ValueError("Invalid unit (use d, h, m, w)")
+    return timedelta(**{units[unit]: amount})
+
+@timer.command(name="set", description="Set a new timer")
+async def timer_set(ctx, duration: str, *, name: str):
+    try:
+        delta = parse_duration(duration)
+    except Exception as e:
+        return await ctx.respond(f"Error parsing duration: {e}")
+
+    end_time = datetime.utcnow() + delta
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO timers (user_id, channel_id, name, end_time) VALUES (?, ?, ?, ?)",
+              (ctx.author.id, ctx.channel.id, name, end_time.isoformat()))
+    conn.commit()
+    conn.close()
+    await ctx.respond(f"Timer **{name}** set for {duration} from now.")
+
+@timer.command(name="list", description="List active timers")
+async def timer_list(ctx):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT id, name, end_time FROM timers WHERE user_id = ?", (ctx.author.id,))
+    rows = c.fetchall()
+    conn.close()
+    if not rows:
+        return await ctx.respond("You have no active timers.")
+    msg = "Your timers:\n"
+    for i, (tid, name, end_time) in enumerate(rows, start=1):
+        remaining = datetime.fromisoformat(end_time) - datetime.utcnow()
+        mins, secs = divmod(int(remaining.total_seconds()), 60)
+        hrs, mins = divmod(mins, 60)
+        days, hrs = divmod(hrs, 24)
+        msg += f"{i}. **{name}** - {days}d {hrs}h {mins}m {secs}s remaining\n"
+    await ctx.respond(msg)
+
+@timer.command(name="cancel", description="Cancel a timer by number (from /timer list)")
+async def timer_cancel(ctx, number: int):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT id FROM timers WHERE user_id = ?", (ctx.author.id,))
+    rows = c.fetchall()
+    if number < 1 or number > len(rows):
+        conn.close()
+        return await ctx.respond("Invalid timer number.")
+    tid = rows[number - 1][0]
+    c.execute("DELETE FROM timers WHERE id = ?", (tid,))
+    conn.commit()
+    conn.close()
+    await ctx.respond(f"Cancelled timer #{number}.")
+
+bot.add_application_command(timer)
+
 @bot.event
 async def on_ready():
     logging.info(f'We have logged in as {bot.user}')
+    if not hasattr(bot, "watcher_started"):
+        bot.loop.create_task(timer_watcher())
+        bot.watcher_started = True
+
+# ----------------------
+# Sooth Commands
+# ----------------------
 
 @bot.slash_command(name='sooth', description='Draw a random sooth card')
 async def sooth(ctx):
@@ -92,7 +209,6 @@ async def getsooth(ctx, prefix=commands.Option(str, 'Card name or unique prefix'
         for family in ['Secrets', 'Visions', 'Mysteries', 'Notions']:
             embed.add_field(name=family, value='\n'.join(f'{i}. {DECK_BY_NUM[i].name}' for i in range(idx, idx + 15)))
             idx += 15
-
         return await ctx.respond(None, embed=embed)
 
     cards = sooth_prefix_match(prefix)
@@ -100,19 +216,23 @@ async def getsooth(ctx, prefix=commands.Option(str, 'Card name or unique prefix'
     if len(cards) > 1:
         cards = list(map(lambda c: c.name, cards))
         cards = ', '.join(cards[0:-1]) + ' or ' + cards[-1]
-        logging.info(f'Matched prefix "{prefix}" to cards "{cards}"')
+        logging.info(f'Matched prefix \"{prefix}\" to cards \"{cards}\"')
         return await ctx.respond(f'Did you mean {cards}?')
 
     if len(cards):
-        logging.info(f'Matched prefix "{prefix}" to card "{cards[0].name}"')
+        logging.info(f'Matched prefix \"{prefix}\" to card \"{cards[0].name}\"')
         return await ctx.respond(None, embed=cards[0].embed())
 
-    logging.info(f'Could not match "{prefix}"')
+    logging.info(f'Could not match \"{prefix}\"')
     return await ctx.respond('No matching sooth card!')
+
+# ----------------------
+# Character Generation
+# ----------------------
 
 @bot.slash_command(name='char', description='Generate a random character')
 async def char(ctx):
-    # Using Suns Apart flux:
+    # Using Suns Apart flux (marking multiples):
     flux = lambda x: ['', '*', '!'][len(x) - len(set(x))]
     ret = ['```']
     for s in ['BODY', 'MIND', 'SOUL']:
@@ -123,14 +243,15 @@ async def char(ctx):
     ret.append('```')
     return await ctx.respond('\n'.join(ret))
 
+# ----------------------
+# Roll Commands
+# ----------------------
+
 @bot.slash_command(name='save', description='Make a saving throw')
-async def save(
-        ctx,
-        advantage: commands.Option(int, 'Use positive numbers for advantage, negative numbers for disadvantage.', required=False),
-        stat: commands.Option(int, 'The value of the stat you are checking against.', required=False)
-    ):
+async def save(ctx,
+        advantage: commands.Option(int, 'Use positive numbers for advantage, negative numbers for disadvantage.', required=False), # type: ignore
+        stat: commands.Option(int, 'The value of the stat you are checking against.', required=False)): # type: ignore
     adv  = advantage or 0
-    # TODO: Add args
     saves = [random.randint(1, 20) for _ in range(abs(adv) + 1)]
 
     if adv > 0:
@@ -162,7 +283,6 @@ async def roll(ctx, dice=commands.Option(str, 'Use +[num] to add Invisible Sun M
         return await ctx.respond(res)
     args = str(dice).split()
     try:
-
         # Invisible Sun roll
         if args[0].startswith('+'):
             if len(args) > 1: raise ValueError
