@@ -4,7 +4,7 @@
 
 *Check us out at: https://themagniloquentmoth.blogspot.com*
 
-### Features:
+## Features:
 
 - supports slash commands (thanks [xPMo](https://github.com/xPMo)!)
 - can draw sooth cards
@@ -12,13 +12,130 @@
 - can track flux for Invisible Sun dice (thanks [Baconaetor](https://github.com/Baconaetor)!)
 - can roll saves and generate character stats for Suns Apart (thanks again [xPMo](https://github.com/xPMo)!)
 - Docker support (thanks [lackita](https://github.com/lackita)!)
+- can track timers (helpful for tracking real-time downtime actions in West Marches games)
 
-### Usage:
+## Adding to Discord
 - Add The Moth bot to your Discord server with
 [this link](https://discord.com/api/oauth2/authorize?client_id=879736921570557963&permissions=3072&scope=bot).
 - Make sure you grant the bot permissions to read and write messages in the channel(s) you want to use it in.
 - type `/` in a channel it can access and start exploring!
 
+## Bot Commands
+### Timer Commands
+
+All timer commands are under the `/timer` group.
+
+#### `/timer set <duration> <name>`
+Set a new personal timer.  
+- **duration**: Time until the timer expires. Use formats like `10m` (minutes), `3h` (hours), `2d` (days), or `1w` (weeks).  
+- **name**: Name of the timer.  
+
+**Example:**  
+```
+
+/timer set 1h Take a break
+
+```
+
+#### `/timer list`
+List all your active timers with remaining time.  
+
+#### `/timer cancel <number>`
+Cancel a timer by the number listed in `/timer list`.  
+
+**Example:**  
+```
+
+/timer cancel 2
+
+```
+
+---
+
+### Sooth Commands
+
+#### `/sooth`
+Draw a random Sooth card from the Invisible Sun deck. Returns an embedded message with the card image, meaning, and flavor text.  
+
+#### `/getsooth <card>`
+Get details about a specific Sooth card. Supports unique prefixes for autocomplete. If multiple matches are found, the bot will suggest possible cards.  
+- **card**: The name or prefix of the card.  
+
+**Examples:**  
+```
+
+/getsooth
+[returns list of all cards]
+
+/getsooth card: Revealing
+[returns the Revealing Knife]
+
+/getsooth card: En
+[Returns "Did you mean Endless Maze, Enticing Jewel, Endless Woods or Enveloping Darkness?"]
+
+```
+
+---
+
+### Character Generation
+
+#### `/char`
+Generate a random character.
+- **BODY**, **MIND**, **SOUL**: core stats
+- **GD**: Guard, ability to avoid harm in combat
+- **DoB**: season (same as month in my setting) and day of birth
+
+**Example:**  
+```
+
+/char
+[returns something like:]
+BODY:  6  2 + 3 + 1
+MIND: 10* 4 + 3 + 3
+SOUL: 11* 4 + 4 + 3
+  GD:  2
+DoB: Summer 24
+
+```
+
+---
+
+### Dice and Saving Throws
+
+#### `/roll [dice]`
+Rolls dice! Supports several formats, both for *Invisible Sun* and *Suns Apart*/*Age of Iron*:
+- Default: rolls a single mundane die (d10).  
+- `+[num]`: Roll that many Invisible Sun magic dice.  
+- `[count]d[sides]`: Roll arbitrary dice (only one die size at a time).  
+- `+/-[bonus]`: Apply a bonus or penalty.  
+
+**Examples:**  
+```
+
+/roll                  # rolls 1 mundane die (d10)
+/roll dice: +3         # rolls a mundane die and 3 magic dice
+/roll dice: 2d6 +3     # rolls 2 six-sided dice plus 3
+/roll dice: 4d8 -1     # rolls 4 eight-sided dice minus 1
+
+```
+
+#### `/save [advantage] [stat]`
+Make a saving throw.  
+- **advantage**: Positive for advantage, negative for disadvantage.  
+- **stat**: The value of the stat you are checking against.  
+
+**Examples:**  
+```
+
+/save                              # rolls a single d20
+/save advantage: 1 stat: 12        # rolls with advantage against stat 12
+/save advantage: -2 stat: 15       # rolls with double disadvantage against stat 15
+
+```
+
+---
+
+## Installation
 ### Running Locally
 You can either run this directly or through Docker. Either way, you'll
 also need to create a bot token, which you can find instructions on
