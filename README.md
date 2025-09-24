@@ -33,7 +33,7 @@ Set a new personal timer.
 **Example:**  
 ```
 
-/timer set 1h Take a break
+/timer set duration: 1d name: Cooking pie
 
 ```
 
@@ -46,7 +46,7 @@ Cancel a timer by the number listed in `/timer list`.
 **Example:**  
 ```
 
-/timer cancel 2
+/timer cancel number: 2
 
 ```
 
