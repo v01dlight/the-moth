@@ -33,25 +33,6 @@ TOWNSFOLK_FIRST = load_table("townsfolk_first.txt")
 TOWNSFOLK_LAST = load_table("townsfolk_last.txt")
 
 # ----------------------
-# NPC Helpers
-# ----------------------
-
-def generate_peasant():
-    name = random.choice(PEASANT_NAMES)
-    detail = random.choice(PEASANT_DETAILS)
-    return f"{name} - {detail}"
-
-def generate_townsfolk():
-    first = random.choice(TOWNSFOLK_FIRST)
-    last = random.choice(TOWNSFOLK_LAST)
-    return f"{first} {last}"
-
-NPC_GENERATORS = {
-    "peasant": generate_peasant,
-    "townsfolk": generate_townsfolk,
-}
-
-# ----------------------
 # Sooth Card Helpers
 # ----------------------
 
