@@ -10,10 +10,50 @@ from discord import commands
 from html2text import html2text
 from datetime import datetime, timedelta
 import asyncio
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
 BS = lambda text: BeautifulSoup(text, 'html.parser')
+
+# ----------------------
+# Load Random Tables
+# ----------------------
+
+TABLE_DIR = Path(__file__).parent / "tables"
+
+def load_table(filename: str) -> list[str]:
+    path = TABLE_DIR / filename
+    with open(path, "r", encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip()]
+
+PEASANT_NAMES = load_table("peasant_names.txt")
+PEASANT_DETAILS = load_table("peasant_details.txt")
+TOWNSFOLK_FIRST = load_table("townsfolk_first.txt")
+TOWNSFOLK_LAST = load_table("townsfolk_last.txt")
+
+# ----------------------
+# NPC Helpers
+# ----------------------
+
+def generate_peasant():
+    name = random.choice(PEASANT_NAMES)
+    detail = random.choice(PEASANT_DETAILS)
+    return f"{name} - {detail}"
+
+def generate_townsfolk():
+    first = random.choice(TOWNSFOLK_FIRST)
+    last = random.choice(TOWNSFOLK_LAST)
+    return f"{first} {last}"
+
+NPC_GENERATORS = {
+    "peasant": generate_peasant,
+    "townsfolk": generate_townsfolk,
+}
+
+# ----------------------
+# Sooth Card Helpers
+# ----------------------
 
 class SoothCard:
     def __init__(self, soup):
@@ -68,6 +108,8 @@ def sooth_complete(ctx: discord.AutocompleteContext):
 
 token = os.environ.get('MOTH_BOT_TOKEN')
 intents = discord.Intents.default()
+#GUILD_ID = ""  # for testing commands quickly
+#bot = discord.Bot(debug_guilds=[GUILD_ID])
 bot = discord.Bot()
 
 # ----------------------
@@ -342,5 +384,40 @@ async def roll(ctx, dice=commands.Option(str, 'Use +[num] to add Invisible Sun M
                '\nUse "/roll" to roll a single Invisible Sun die (mundane).'
                '\nTo add magic dice, use +[# of magic dice].'
                '\nFor other dice rolls, use the form [count]d[sides], +[bonus], or -[bonus]')
+
+# ----------------------
+# NPC Commands
+# ----------------------
+
+@bot.slash_command(name="npc", description="Generate one or more NPCs")
+async def npc(
+    ctx,
+    npc_type: commands.Option(
+        str,
+        "Type of NPC to generate",
+        choices=["peasant", "townsfolk"]
+    ),  # type: ignore
+    number: commands.Option(
+        int,
+        "How many NPCs to generate",
+        required=False
+    )  # type: ignore
+):
+    number = number or 1
+    number = max(1, min(number, 50)) # safety cap
+
+    if npc_type == "peasant":
+        generate = lambda: f"{random.choice(PEASANT_NAMES)} - {random.choice(PEASANT_DETAILS)}"
+    elif npc_type == "townsfolk":
+        generate = lambda: f"{random.choice(TOWNSFOLK_FIRST)} {random.choice(TOWNSFOLK_LAST)}"
+    else:
+        return await ctx.respond("Unknown NPC type.")
+
+    results = [generate() for _ in range(number)]
+
+    if number == 1:
+        return await ctx.respond(results[0])
+
+    await ctx.respond("\n".join(f"{i+1}. {npc}" for i, npc in enumerate(results)))
 
 bot.run(token)

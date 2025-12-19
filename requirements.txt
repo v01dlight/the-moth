@@ -3,3 +3,4 @@ html2text
 py-cord
 requests
 aiosqlite
+pathlib

@@ -100,6 +100,32 @@ DoB: Summer 24
 
 ---
 
+### NPC Generation
+
+#### `/npc <npc_type> <number>`
+Generate a random NPC from a set of name and detail tables.
+- `npc_type`: currently either peasant, or townsfolk for more well-to-do NPCs
+- `number`: defaults to 1, but allows generating up to 50 NPCs at once
+
+**Example:**  
+```
+
+/npc npc_type: peasant
+[returns something like:]
+Mariota - Angular, asymmetrical chin
+
+/npc npc_type: townsfolk number: 5
+[returns something like:]
+1. Huget Scobie
+2. Stephen Rosny
+3. Isolda Chepstow
+4. Gilbert Oggerham
+5. Avice Bedrule
+
+```
+
+---
+
 ### Dice and Saving Throws
 
 #### `/roll [dice]`
