@@ -103,7 +103,7 @@ DoB: Summer 24
 ### NPC Generation
 
 #### `/npc <npc_type> <number>`
-Generate a random NPC from a set of name and detail tables.
+Generate a random NPC from a set of name and detail tables (currently drawn from [The Monster Overhaul](https://coinsandscrolls.blogspot.com/2023/02/osr-monster-overhaul-megapost.html), which you should pick up because it's excellent).
 - `npc_type`: currently either peasant, or townsfolk for more well-to-do NPCs
 - `number`: defaults to 1, but allows generating up to 50 NPCs at once
 
